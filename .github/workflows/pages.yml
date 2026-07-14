@@ -1,9 +1,6 @@
 name: Deploy WRS Quest Preview
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - agent/wrs-quest-foundation
