@@ -3,12 +3,13 @@ name: Deploy WRS Quest Preview
 on:
   push:
     branches:
-      - agent/wrs-quest-foundation
       - main
+    paths-ignore:
+      - DEPLOYMENT_STATUS.md
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -37,10 +38,27 @@ jobs:
       - name: Build production app
         run: npm run build
 
+      - name: Ensure GitHub Pages is enabled
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.request('POST /repos/{owner}/{repo}/pages', {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                build_type: 'workflow'
+              });
+              core.info('GitHub Pages enabled for workflow deployment.');
+            } catch (error) {
+              if (error.status === 409 || error.status === 422) {
+                core.info('GitHub Pages is already enabled.');
+              } else {
+                throw error;
+              }
+            }
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload production artifact
         uses: actions/upload-pages-artifact@v3
@@ -57,3 +75,31 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Checkout main for deployment status
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Publish verified game URL
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          cat > DEPLOYMENT_STATUS.md <<EOF
+          # WRS Quest Deployment
+
+          Status: LIVE
+
+          Game URL: ${PAGE_URL}
+
+          Deployed commit: ${GITHUB_SHA}
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add DEPLOYMENT_STATUS.md
+          if git diff --cached --quiet; then
+            echo "Deployment status is already current."
+          else
+            git commit -m "Record verified WRS Quest deployment URL"
+            git push origin HEAD:main
+          fi
