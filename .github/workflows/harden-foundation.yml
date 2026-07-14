@@ -1,0 +1,36 @@
+name: Harden WRS Quest Foundation
+
+on:
+  push:
+    branches:
+      - agent/wrs-quest-foundation
+    paths:
+      - scripts/harden-foundation.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout foundation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/wrs-quest-foundation
+
+      - name: Apply foundation hardening
+        run: node scripts/harden-foundation.mjs
+
+      - name: Commit hardened game state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/styles.css
+          if git diff --cached --quiet; then
+            echo "No hardening changes required."
+          else
+            git commit -m "Harden WRS Quest saves and promotion balance"
+            git push origin HEAD:agent/wrs-quest-foundation
+          fi
