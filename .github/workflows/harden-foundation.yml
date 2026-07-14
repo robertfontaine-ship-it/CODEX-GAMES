@@ -6,6 +6,7 @@ on:
       - agent/wrs-quest-foundation
     paths:
       - scripts/harden-foundation.mjs
+      - .github/workflows/harden-foundation.yml
   workflow_dispatch:
 
 permissions:
