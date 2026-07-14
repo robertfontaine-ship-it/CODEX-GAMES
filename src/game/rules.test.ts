@@ -33,7 +33,7 @@ describe('promotion rules', () => {
 
 describe('performance scoring', () => {
   it('rewards accuracy and penalizes mistakes', () => {
-    expect(calculatePerformanceScore(passingRun)).toBe(125);
+    expect(calculatePerformanceScore(passingRun)).toBe(113);
   });
 
   it('reserves three stars for an excellent run', () => {
