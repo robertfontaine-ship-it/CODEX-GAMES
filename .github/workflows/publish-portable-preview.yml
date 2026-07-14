@@ -1,0 +1,50 @@
+name: Publish Portable WRS Quest Preview
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - preview/index.html
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build production game
+        run: npm run build
+
+      - name: Generate portable browser preview
+        run: node scripts/make-portable-preview.mjs
+
+      - name: Commit portable preview
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/index.html
+          if git diff --cached --quiet; then
+            echo "Portable preview is already current."
+          else
+            git commit -m "Publish portable WRS Quest preview"
+            git push origin HEAD:main
+          fi
