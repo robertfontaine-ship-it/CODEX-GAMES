@@ -1,4 +1,4 @@
-// Foundation hardening v2
+// Foundation hardening v3
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const appPath = 'src/App.tsx';
@@ -67,7 +67,7 @@ app = app.replace(
 app = replaceOnce(
   app,
   `      <div className="hud-stat">\n        <small>CREDITS</small>\n        <strong>{run.credits}</strong>\n      </div>\n      <div className="hud-stat wide">`,
-  `      <div className="hud-stat">\n        <small>CREDITS</small>\n        <strong>{run.credits}</strong>\n      </div>\n      <div className="hud-stat">\n        <small>TIME BANK</small>\n        <strong className={run.time < 0 ? 'negative' : ''}>\n          {run.time > 0 ? \\`+\\${run.time}\\` : run.time}\n        </strong>\n      </div>\n      <div className="hud-stat wide">`,
+  `      <div className="hud-stat">\n        <small>CREDITS</small>\n        <strong>{run.credits}</strong>\n      </div>\n      <div className="hud-stat">\n        <small>TIME BANK</small>\n        <strong className={run.time < 0 ? 'negative' : ''}>\n          {run.time > 0 ? '+' + run.time : run.time}\n        </strong>\n      </div>\n      <div className="hud-stat wide">`,
   'time-bank HUD',
 );
 
