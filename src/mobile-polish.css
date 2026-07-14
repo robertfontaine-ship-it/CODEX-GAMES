@@ -33,9 +33,10 @@
 
   .title-screen h2 {
     max-width: 100%;
-    font-size: clamp(1.9rem, 10.5vw, 2.7rem);
-    letter-spacing: 0;
-    overflow-wrap: anywhere;
+    font-size: clamp(1.75rem, 8.8vw, 2.25rem);
+    letter-spacing: -0.02em;
+    overflow-wrap: normal;
+    white-space: nowrap;
   }
 
   .title-screen .eyebrow {
