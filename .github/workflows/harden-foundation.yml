@@ -1,6 +1,12 @@
 name: Harden WRS Quest Foundation
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/harden-foundation.mjs
+      - .github/workflows/harden-foundation.yml
   push:
     branches:
       - agent/wrs-quest-foundation
