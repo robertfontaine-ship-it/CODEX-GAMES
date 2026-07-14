@@ -1,3 +1,4 @@
+// Foundation hardening v2
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const appPath = 'src/App.tsx';
