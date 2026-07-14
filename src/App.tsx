@@ -8,6 +8,12 @@ import {
   type InboxAction,
   type SkillCategory,
 } from './game/content';
+import {
+  calculatePerformanceScore,
+  calculateStars,
+  isPromoted,
+  PROMOTION_REQUIREMENTS,
+} from './game/rules';
 
 const SAVE_KEY = 'wrs-quest-floor-1-save';
 const SETTINGS_KEY = 'wrs-quest-settings';
@@ -59,10 +65,24 @@ interface GameSettings {
   textSpeed: 'Standard' | 'Fast';
 }
 
+interface ChallengeFeedback {
+  correct: boolean;
+  text: string;
+}
+
 interface SavedGame {
+  version: 2;
   run: RunState;
   screen: Screen;
   encounterIndex: number;
+  lastChoice: EncounterChoice | null;
+  inboxIndex: number;
+  inboxSeconds: number;
+  inboxCombo: number;
+  inboxFeedback: ChallengeFeedback | null;
+  elevatorIndex: number;
+  elevatorSeconds: number;
+  elevatorFeedback: ChallengeFeedback | null;
 }
 
 const initialSkills = (): Record<SkillCategory, number> => ({
@@ -123,6 +143,10 @@ function App() {
   const [settings, setSettings] = useState<GameSettings>(loadSettings);
   const [hasSave, setHasSave] = useState(Boolean(loadSave()));
   const [debugOpen, setDebugOpen] = useState(false);
+  const devMode = useMemo(
+    () => new URLSearchParams(window.location.search).has('dev'),
+    [],
+  );
 
   const [inboxIndex, setInboxIndex] = useState(0);
   const [inboxSeconds, setInboxSeconds] = useState(50);
@@ -146,10 +170,35 @@ function App() {
 
   useEffect(() => {
     if (screen === 'title' || screen === 'how-to' || screen === 'settings') return;
-    const save: SavedGame = { run, screen, encounterIndex };
+    const save: SavedGame = {
+      version: 2,
+      run,
+      screen,
+      encounterIndex,
+      lastChoice,
+      inboxIndex,
+      inboxSeconds,
+      inboxCombo,
+      inboxFeedback,
+      elevatorIndex,
+      elevatorSeconds,
+      elevatorFeedback,
+    };
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
     setHasSave(true);
-  }, [run, screen, encounterIndex]);
+  }, [
+    run,
+    screen,
+    encounterIndex,
+    lastChoice,
+    inboxIndex,
+    inboxSeconds,
+    inboxCombo,
+    inboxFeedback,
+    elevatorIndex,
+    elevatorSeconds,
+    elevatorFeedback,
+  ]);
 
   useEffect(() => {
     if (screen !== 'inbox' || inboxFeedback) return;
@@ -177,20 +226,9 @@ function App() {
     if (screen === 'elevator' && elevatorSeconds === 0) finishFloor();
   }, [elevatorSeconds, screen]);
 
-  const promotionScore = useMemo(
-    () =>
-      run.xp +
-      run.trust * 8 +
-      run.inboxCorrect * 7 +
-      run.elevatorCorrect * 12 -
-      run.inboxErrors * 4 -
-      run.elevatorErrors * 6,
-    [run],
-  );
-
-  const promoted =
-    run.xp >= 78 && run.trust >= 0 && run.elevatorCorrect >= 2;
-  const stars = promotionScore >= 185 ? 3 : promotionScore >= 130 ? 2 : 1;
+  const promotionScore = useMemo(() => calculatePerformanceScore(run), [run]);
+  const promoted = isPromoted(run);
+  const stars = calculateStars(promotionScore);
 
   function startNewShift() {
     localStorage.removeItem(SAVE_KEY);
@@ -198,29 +236,30 @@ function App() {
     setEncounterIndex(0);
     setLastChoice(null);
     setInboxIndex(0);
+    setInboxSeconds(50);
     setInboxCombo(0);
     setInboxFeedback(null);
     setElevatorIndex(0);
+    setElevatorSeconds(35);
     setElevatorFeedback(null);
     setScreen('briefing');
   }
 
   function continueShift() {
     const saved = loadSave();
-    if (!saved) return startNewShift();
+    if (!saved || saved.version !== 2) return startNewShift();
+
     setRun(saved.run);
     setEncounterIndex(saved.encounterIndex);
-    setLastChoice(null);
-
-    if (saved.screen === 'inbox') {
-      beginInbox(saved.run);
-    } else if (saved.screen === 'elevator') {
-      beginElevator(saved.run);
-    } else if (saved.screen === 'review') {
-      setScreen('review');
-    } else {
-      setScreen(saved.screen === 'outcome' ? 'encounter' : saved.screen);
-    }
+    setLastChoice(saved.lastChoice);
+    setInboxIndex(saved.inboxIndex);
+    setInboxSeconds(saved.inboxSeconds);
+    setInboxCombo(saved.inboxCombo);
+    setInboxFeedback(saved.inboxFeedback);
+    setElevatorIndex(saved.elevatorIndex);
+    setElevatorSeconds(saved.elevatorSeconds);
+    setElevatorFeedback(saved.elevatorFeedback);
+    setScreen(saved.screen);
   }
 
   function chooseEncounter(choice: EncounterChoice) {
@@ -495,15 +534,17 @@ function App() {
         )}
       </main>
 
-      <button
-        className="debug-trigger"
-        aria-label="Open developer controls"
-        onClick={() => setDebugOpen((open) => !open)}
-      >
-        DEV
-      </button>
+      {devMode && (
+        <button
+          className="debug-trigger"
+          aria-label="Open developer controls"
+          onClick={() => setDebugOpen((open) => !open)}
+        >
+          DEV
+        </button>
+      )}
 
-      {debugOpen && (
+      {devMode && debugOpen && (
         <aside className="debug-panel">
           <strong>Scene Jump</strong>
           <button onClick={() => debugJump('encounter')}>Encounter 1</button>
@@ -536,6 +577,12 @@ function StatusHud({ run }: { run: RunState }) {
       <div className="hud-stat">
         <small>CREDITS</small>
         <strong>{run.credits}</strong>
+      </div>
+      <div className="hud-stat">
+        <small>TIME BANK</small>
+        <strong className={run.time < 0 ? 'negative' : ''}>
+          {run.time > 0 ? '+' + run.time : run.time}
+        </strong>
       </div>
       <div className="hud-stat wide">
         <small>ALLIES</small>
@@ -953,7 +1000,9 @@ function ReviewScreen({
       </details>
       {!promoted && (
         <p className="promotion-tip">
-          Promotion requires 78 XP, nonnegative Trust, and at least two cleared elevator obstacles.
+          Promotion requires {PROMOTION_REQUIREMENTS.xp} XP, nonnegative Trust, at least{' '}
+          {PROMOTION_REQUIREMENTS.inboxCorrect} correct Inbox Zero decisions, and at least{' '}
+          {PROMOTION_REQUIREMENTS.elevatorCorrect} cleared elevator obstacles.
         </p>
       )}
       <div className="button-row">
