@@ -1,0 +1,42 @@
+name: Expand Business Simulator V7 source
+
+on:
+  push:
+    branches:
+      - agent/business-simulator-v7-platform
+    paths:
+      - business-simulator-v7/business-simulator-v7-source.tar.gz
+      - .github/workflows/extract-v7-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  expand-source:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out V7 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/business-simulator-v7-platform
+          fetch-depth: 0
+
+      - name: Extract application source
+        working-directory: business-simulator-v7
+        run: |
+          tar -xzf business-simulator-v7-source.tar.gz
+          rm -f business-simulator-v7-source.tar.gz EXTRACT.md extract-source.sh
+
+      - name: Commit expanded source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add business-simulator-v7
+          if git diff --cached --quiet; then
+            echo "No extraction changes to commit."
+            exit 0
+          fi
+          git commit -m "Expand Business Simulator V7 source"
+          git push origin HEAD:agent/business-simulator-v7-platform
