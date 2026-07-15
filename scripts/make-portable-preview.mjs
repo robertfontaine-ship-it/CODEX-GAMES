@@ -90,7 +90,8 @@ ${diagnostics}
 ${storageFallback}
 <script>${js}\n//# sourceURL=wrs-quest-bundle.js</script>`;
 
-html = html.replace('</body>', `${inlineAssets}\n</body>`);
+// Use a replacement callback so dollar sequences inside the compiled bundle are inserted literally.
+html = html.replace('</body>', () => `${inlineAssets}\n</body>`);
 mkdirSync('preview', { recursive: true });
 writeFileSync('preview/index.html', html, 'utf8');
 console.log('Created preview/index.html with visible startup diagnostics.');
