@@ -6,15 +6,19 @@ Playtest mode is for evaluating whether Floor 1 is understandable, engaging, wel
 
 It is not a student analytics platform. It stores no names, accounts, class identifiers, or remote data.
 
-## Launch
+## One-click launch
 
-Add `?playtest` to the game URL.
+Open the public playtest build:
 
-Example:
+https://raw.githack.com/robertfontaine-ship-it/CODEX-GAMES/main/preview/index.html?playtest
 
-```text
-https://example.com/wrs-quest/?playtest
-```
+The link opens the committed, self-contained browser build. It does not require a download, extraction, account, or local installation.
+
+A yellow **PLAYTEST MODE** badge appears whenever tracking is active.
+
+## Other launch methods
+
+Add `?playtest` to any hosted game URL.
 
 Playtest mode can also be enabled in the browser console:
 
@@ -29,8 +33,6 @@ Disable it with:
 localStorage.removeItem('wrs-quest-playtest-mode');
 location.reload();
 ```
-
-A yellow **PLAYTEST MODE** badge appears whenever tracking is active.
 
 ## Data recorded locally
 
