@@ -6,11 +6,11 @@ WRS Quest is a browser-first narrative arcade RPG that teaches Workplace Readine
 
 ## Play now
 
-### [▶ Play Floor 1 — Intern Orientation](https://raw.githack.com/robertfontaine-ship-it/CODEX-GAMES/main/preview/index.html)
+### [▶ Play Floor 1 — Intern Orientation](https://raw.githack.com/robertfontaine-ship-it/CODEX-GAMES/23068513747af8292ddffc9d0f2e2f7aaab10507/preview/index.html)
 
-### [🧪 Launch Floor 1 in Playtest Mode](https://raw.githack.com/robertfontaine-ship-it/CODEX-GAMES/main/preview/index.html?playtest)
+### [🧪 Launch Floor 1 in Playtest Mode](https://raw.githack.com/robertfontaine-ship-it/CODEX-GAMES/23068513747af8292ddffc9d0f2e2f7aaab10507/preview/index.html?playtest)
 
-These links open the committed, self-contained browser build. No download, extraction, account, or local installation is required.
+These links are pinned to the repaired browser build so a cached copy of the corrupted preview cannot load. No download, extraction, account, or local installation is required.
 
 Playtest Mode displays a yellow badge, records the session locally, and adds the Playtest Lab after the performance review. No data is transmitted automatically.
 
