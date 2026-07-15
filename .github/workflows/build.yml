@@ -6,6 +6,11 @@ on:
     branches:
       - main
       - agent/wrs-quest-foundation
+    paths-ignore:
+      - preview/index.html
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -31,13 +36,32 @@ jobs:
           set -o pipefail
           npm run build 2>&1 | tee build.log
 
+      - name: Generate portable browser preview
+        run: node scripts/make-portable-preview.mjs
+
       - name: Upload production build
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: wrs-quest-production
-          path: dist
+          path: |
+            dist
+            preview/index.html
           if-no-files-found: error
+
+      - name: Publish portable preview to main
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/index.html
+          if git diff --cached --quiet; then
+            echo "Portable preview is already current."
+          else
+            git commit -m "Publish repaired WRS Quest browser preview [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: Upload build log
         if: always()
