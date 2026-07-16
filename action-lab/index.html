@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#050b14" />
+<title>WRS Quest: Action Lab 0.1</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app"><div class="grid"></div><main class="shell">
+  <header class="hud">
+    <div class="brand"><small>WRS Quest</small><strong id="stageLabel">ACTION LAB</strong></div>
+    <div><small>Score</small><strong id="scoreHud">0</strong></div>
+    <div><small>Trust</small><strong id="trustHud">3</strong></div>
+    <div><small>Stage</small><strong id="stageHud">0/3</strong></div>
+  </header>
+
+  <section class="screen" id="titleScreen" style="--accent:var(--green)">
+    <div class="eyebrow">Mechanic-first prototype • mobile playtest</div>
+    <h1 class="title">Corpocalypse:<br><span>Action Lab</span></h1>
+    <p>The office is collapsing. Stop reading about workplace readiness and use it to survive three live challenges.</p>
+    <div class="mission"><strong>This is not the full Floor 1</strong><span>This build tests whether the new touch mechanics feel like an actual game before we rebuild the campaign around them.</span></div>
+    <button class="big-action" id="startBtn">Start the emergency</button>
+  </section>
+
+  <section class="screen hidden" id="briefScreen" style="--accent:var(--orange)">
+    <div class="eyebrow">OmniCorp Tower • 8:03 AM</div><h2>Everything breaks at once</h2>
+    <div class="brief-grid">
+      <article><b>01</b><h3>Inbox Attack</h3><p>Swipe urgent messages before the network locks.</p></article>
+      <article><b>02</b><h3>Safety Sweep</h3><p>Drag the correct response tools onto workplace hazards.</p></article>
+      <article><b>03</b><h3>Elevator Run</h3><p>Dodge falling office junk and collect access badges.</p></article>
+    </div>
+    <div class="mission"><strong>Promotion condition</strong><span>Complete all three mechanics. Earlier performance will visibly alter the final escape.</span></div>
+    <button class="big-action" id="clockBtn">Clock in</button>
+  </section>
+
+  <section class="screen hidden" id="inboxScreen" style="--accent:var(--cyan)">
+    <div class="stage-head"><div><div class="eyebrow">Stage 1 • Cybersecurity + prioritization</div><h2>Inbox Attack</h2></div><div class="timer" id="inboxTimer">READY</div></div>
+    <div class="objective"><b>Objective:</b> swipe each message toward the correct action. Short messages, fast decisions.</div>
+    <div id="inboxReady" class="ready-panel"><div><div class="icon">📨</div><p>Swipe the card or tap a direction button. The clock starts only when you press start.</p><div class="legend"><div><b>←</b>Delete</div><div><b>→</b>Respond</div><div><b>↑</b>Schedule</div><div><b>↓</b>Report</div></div><button class="big-action" id="startInboxBtn">Start inbox attack</button></div></div>
+    <div id="inboxGame" class="inbox-arena hidden">
+      <div class="mail-stack" id="mailStack"><div class="flash" id="mailFlash"></div></div>
+      <div class="swipe-hints"><button data-swipe="left">← Delete</button><button data-swipe="right">Respond →</button><button data-swipe="up">↑ Schedule</button><button data-swipe="down">↓ Report</button></div>
+    </div>
+  </section>
+
+  <section class="screen hidden" id="hazardScreen" style="--accent:var(--yellow)">
+    <div class="stage-head"><div><div class="eyebrow">Stage 2 • Safety + operations</div><h2>Safety Sweep</h2></div><div class="timer" id="hazardTimer">READY</div></div>
+    <div class="objective"><b>Objective:</b> drag each response tool onto the matching hazard. You can move tools again after a mistake.</div>
+    <div id="hazardReady" class="ready-panel"><div><div class="icon">⚠️</div><p>Clear four hazards before the emergency route opens. The clock will not start until you choose to begin.</p><button class="big-action" id="startHazardBtn">Start safety sweep</button></div></div>
+    <div id="hazardGame" class="hidden">
+      <div class="toolbox" id="toolbox"></div>
+      <div class="office-map" id="officeMap">
+        <div class="desk" style="left:7%;top:12%"></div><div class="desk" style="right:8%;top:18%"></div><div class="desk" style="left:36%;bottom:10%"></div>
+      </div>
+      <div class="status-line" id="hazardStatus">Drag a tool onto a flashing hazard.</div>
+    </div>
+  </section>
+
+  <section class="screen hidden" id="elevatorScreen" style="--accent:var(--orange)">
+    <div class="stage-head"><div><div class="eyebrow">Stage 3 • Reflexes + consequences</div><h2>Elevator Run</h2></div><div class="timer" id="elevatorTimer">READY</div></div>
+    <div class="objective"><b>Objective:</b> move left and right, dodge red hazards, and collect green access badges. Your earlier performance changes this level.</div>
+    <div class="arcade-wrap">
+      <div class="canvas-shell"><canvas id="gameCanvas" width="760" height="820"></canvas><div class="arcade-overlay" id="arcadeOverlay"><div><h3>Escape route armed</h3><p id="elevatorModifier">Calculating your chain reactions…</p><button class="big-action" id="startElevatorBtn">Start elevator run</button></div></div></div>
+      <div class="controls"><button id="leftBtn">◀ Move</button><button id="rightBtn">Move ▶</button></div>
+    </div>
+  </section>
+
+  <section class="screen hidden" id="reviewScreen" style="--accent:var(--green)">
+    <div class="eyebrow">Mechanics test complete</div><h2 id="reviewTitle">Floor survived</h2>
+    <div class="score-grid"><div><small>Total score</small><strong id="finalScore">0</strong></div><div><small>Inbox</small><strong id="finalInbox">0/6</strong></div><div><small>Hazards</small><strong id="finalHazards">0/4</strong></div></div>
+    <h3>Visible chain reactions</h3><div class="chain" id="chainResults"></div>
+    <div class="mission"><strong>The only question that matters</strong><span>Did this feel more like playing a game than reading and clicking?</span></div>
+    <div class="rating"><label>Fun</label><div data-rating="fun"></div></div>
+    <div class="rating"><label>Clarity</label><div data-rating="clarity"></div></div>
+    <div class="rating"><label>Actual game feeling</label><div data-rating="gameFeel"></div></div>
+    <textarea id="comment" placeholder="What felt good, confusing, cheap, slow, or still too much like school?"></textarea>
+    <div class="button-row"><button id="replayBtn">Replay mechanics</button><button class="big-action" id="exportBtn">Export feedback JSON</button></div>
+  </section>
+</main></div><div class="toast" id="toast">Saved</div>
+<script src="game.js"></script>
+</body>
+</html>
