@@ -8,6 +8,7 @@ import './styles.css';
 import './mobile-polish.css';
 import './game-feel.css';
 import './playtest.css';
+import './outbreak.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
