@@ -1,4 +1,4 @@
-name: Deploy WRS Quest Preview
+name: Deploy WRS Quest + Marketing Concept Library
 
 on:
   push:
@@ -38,6 +38,11 @@ jobs:
       - name: Build production app
         run: npm run build
 
+      - name: Add Marketing Concept Library to Pages artifact
+        run: |
+          mkdir -p dist/concept-library
+          cp -R concept-library-v2/. dist/concept-library/
+
       - name: Ensure GitHub Pages is enabled
         uses: actions/github-script@v7
         with:
@@ -61,7 +66,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Upload production artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: dist
 
@@ -92,6 +97,8 @@ jobs:
 
           Game URL: ${PAGE_URL}
 
+          Marketing Concept Library: ${PAGE_URL}concept-library/
+
           Deployed commit: ${GITHUB_SHA}
           EOF
           git config user.name "github-actions[bot]"
@@ -100,6 +107,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Deployment status is already current."
           else
-            git commit -m "Record verified WRS Quest deployment URL"
+            git commit -m "Record verified Pages deployment URLs"
             git push origin HEAD:main
           fi
