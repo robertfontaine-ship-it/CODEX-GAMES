@@ -40,13 +40,12 @@ jobs:
 
       - name: Add Marketing Concept Library to Pages artifact
         run: |
-          mkdir -p dist/concept-library
+          mkdir -p dist/concept-library dist/marketing
           cp -R concept-library-v2/. dist/concept-library/
+          cp -R concept-library-v2/. dist/marketing/
 
-      - name: Configure and enable GitHub Pages
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload production artifact
         uses: actions/upload-pages-artifact@v4
@@ -80,7 +79,9 @@ jobs:
 
           WRS Quest: ${PAGE_URL}
 
-          Marketing Concept Library: ${PAGE_URL}concept-library/
+          Marketing Concept Library: ${PAGE_URL}marketing/
+
+          Legacy Concept Library URL: ${PAGE_URL}concept-library/
 
           Deployed commit: ${GITHUB_SHA}
           EOF
