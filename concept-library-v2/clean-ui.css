@@ -1,0 +1,32 @@
+/* Cleaner visual system: progressive disclosure + stronger hierarchy */
+:root{--soft:#0c1828;--soft2:#0f2034;--focus:#122a43;--gold:#f8d66d;--cyan:#67e8f9;--green:#86efac}
+body{background:linear-gradient(180deg,#07111f,#0b1730 62%,#07111f)}
+.wrap{max-width:1120px}.card{border-color:#233a56;box-shadow:none}.hero{padding:28px 30px}.hero h2{max-width:900px}.two{grid-template-columns:minmax(0,1fr) 280px;gap:16px}.sectiontitle{margin-top:28px}.termgrid{grid-template-columns:repeat(3,1fr)}
+
+/* Less visual noise in sidebars */
+aside>.card,aside>.call{background:#0a1626;border-color:#203751}aside>.card:not(.mclFeatured):not(.stickyGloss){padding:14px}aside .ey{opacity:.8}
+
+/* Visual explainer */
+.cleanVisual{margin:0 0 14px;background:linear-gradient(180deg,#0d1d31,#0a1627);border:1px solid #294a69;border-radius:18px;padding:18px}.cleanVisualHead{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:14px}.cleanVisualHead h3{margin:3px 0 0;font-size:22px}.cleanVisualHead p{margin:0;color:var(--m);max-width:520px}.visualMap{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:center}.visualCenter{border:2px solid var(--cyan);border-radius:16px;padding:18px;text-align:center;background:#0d253a;font-weight:800}.visualBranches{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.visualNode{background:#0a1728;border:1px solid #29415f;border-radius:13px;padding:12px;text-align:left;cursor:pointer;color:var(--t)}.visualNode b{display:block;margin-bottom:3px}.visualNode small{display:block;color:var(--m);line-height:1.35}.visualNode:hover{border-color:var(--cyan)}
+
+/* Collapsible deeper material */
+.cleanMore{border:1px solid #27405d;border-radius:15px;background:#091525;margin:12px 0;overflow:hidden}.cleanMore>summary{cursor:pointer;list-style:none;padding:14px 16px;font-weight:800;display:flex;justify-content:space-between;align-items:center}.cleanMore>summary::-webkit-details-marker{display:none}.cleanMore>summary:after{content:'+';color:var(--cyan);font-size:20px}.cleanMore[open]>summary:after{content:'–'}.cleanMoreBody{padding:0 16px 16px}.cleanMore .card{margin:0;border:0;background:transparent;padding:10px 0}.cleanMore .example{margin:0 0 10px}.cleanMore .bigchips{margin-top:8px}
+
+/* Real-world/case cards get priority without clutter */
+.caseStudy{margin-top:12px}.caseStudy .caseMissionBox{margin-top:14px}.mclFeatured .caseRack{grid-template-columns:1fr}.caseMini{padding:12px}
+
+/* Mission progressive reveal */
+.gameMission{padding:18px;background:linear-gradient(180deg,#0b1e17,#091a14);border-color:#315b42}.gameMission .missionTop{margin-bottom:10px}.gameMission .briefing{background:#0b171f;border:1px solid #28445b;border-radius:14px;padding:14px}.gameMission .intel,.gameMission .twistbox,.gameMission .decisionGrid,.gameMission .missionFooter{display:none}.gameMission.mission-active .intel{display:block}.gameMission .decision{display:none}.gameMission .decision.visible{display:block;animation:cleanFade .2s ease}.gameMission.mission-active .decisionGrid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}.gameMission.mission-active .decisionGrid .decision:first-child{display:block}.gameMission.pressure-ready .twistbox{display:flex}.gameMission.complete-ready .missionFooter{display:flex}.missionLaunch{margin-top:12px;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;border:1px solid #2b5a43;border-radius:13px;background:#0c2118}.missionLaunch b{color:var(--green)}.missionProgress{height:7px;background:#06120d;border-radius:99px;overflow:hidden;flex:1;max-width:260px}.missionProgress span{display:block;height:100%;background:var(--green);width:0;transition:width .2s}.missionStage{font-size:12px;color:var(--m)}
+
+/* Case mission fields also simplified */
+.caseMissionGrid{grid-template-columns:1fr}.caseMissionGrid label{background:#091725;border:1px solid #233d57;border-radius:12px;padding:12px}.caseMissionGrid textarea{min-height:95px}
+
+/* Term page layout */
+.cleanTermHero{display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:stretch}.cleanTermHero .hero{margin:0}.termVisualCard{border:1px solid #294a69;border-radius:17px;background:radial-gradient(circle at 50% 25%,#143250,#0a1728 58%);padding:18px;display:flex;flex-direction:column;justify-content:center}.termVisualCard .ey{margin-bottom:10px}.termVisualCore{border:2px solid var(--cyan);border-radius:14px;padding:14px;text-align:center;font-weight:900;background:#0b2236}.termVisualFlow{display:grid;grid-template-columns:1fr;gap:7px;margin-top:10px}.termVisualFlow button{border:1px solid #29415f;background:#0c1b2d;color:var(--t);border-radius:10px;padding:9px;cursor:pointer;text-align:left}.termVisualFlow button:hover{border-color:var(--cyan)}
+
+/* Cleaner home + cards */
+.hub{min-height:150px}.hub p{max-width:46ch}.stats{gap:10px}.st{padding:12px}.freshGrid{grid-template-columns:repeat(2,1fr)}
+
+@keyframes cleanFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media(max-width:860px){.two{grid-template-columns:1fr}.visualMap,.cleanTermHero{grid-template-columns:1fr}.termgrid{grid-template-columns:repeat(2,1fr)}aside{display:grid;grid-template-columns:1fr 1fr;gap:10px}.freshGrid{grid-template-columns:1fr}}
+@media(max-width:560px){.hero{padding:22px 18px}.termgrid,.visualBranches,aside{grid-template-columns:1fr}.cleanVisual{padding:14px}.missionLaunch{align-items:flex-start;flex-direction:column}.missionProgress{width:100%;max-width:none}}
