@@ -43,27 +43,10 @@ jobs:
           mkdir -p dist/concept-library
           cp -R concept-library-v2/. dist/concept-library/
 
-      - name: Ensure GitHub Pages is enabled
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              await github.request('POST /repos/{owner}/{repo}/pages', {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                build_type: 'workflow'
-              });
-              core.info('GitHub Pages enabled for workflow deployment.');
-            } catch (error) {
-              if (error.status === 409 || error.status === 422) {
-                core.info('GitHub Pages is already enabled.');
-              } else {
-                throw error;
-              }
-            }
-
-      - name: Configure Pages
+      - name: Configure and enable GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload production artifact
         uses: actions/upload-pages-artifact@v4
@@ -86,16 +69,16 @@ jobs:
         with:
           ref: main
 
-      - name: Publish verified game URL
+      - name: Publish verified site URLs
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           cat > DEPLOYMENT_STATUS.md <<EOF
-          # WRS Quest Deployment
+          # Classroom Sites Deployment
 
           Status: LIVE
 
-          Game URL: ${PAGE_URL}
+          WRS Quest: ${PAGE_URL}
 
           Marketing Concept Library: ${PAGE_URL}concept-library/
 
@@ -107,6 +90,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Deployment status is already current."
           else
-            git commit -m "Record verified Pages deployment URLs"
+            git commit -m "Record verified classroom site URLs"
             git push origin HEAD:main
           fi
