@@ -1,0 +1,2 @@
+const MCL_CANON=Object.fromEntries(T.map(x=>[x.n.toLowerCase(),x.n]));
+linkText=function(s,current=''){let out='',last=0;String(s).replace(conceptRE,(m,_g,off)=>{let canonical=MCL_CANON[m.toLowerCase()]||m;out+=esc(String(s).slice(last,off));out+=canonical.toLowerCase()===String(current).toLowerCase()?esc(m):`<button class="inlineTerm" data-tip="${esc(canonical)}">${esc(m)}</button>`;last=off+m.length;return m});return out+esc(String(s).slice(last))};
