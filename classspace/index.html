@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#6b38f0" />
+<title>ClassSpace</title>
+<meta name="description" content="A private classroom community for students to build profiles, discover classmates, and connect around interests and skills." />
+<link rel="stylesheet" href="style-a.css" />
+<link rel="stylesheet" href="style-b.css" />
+</head>
+<body>
+
+<header class="top"><div class="brand"><div class="mark">CS</div>ClassSpace</div><div class="status" id="status"><span class="statusdot"></span><span>Connecting…</span></div></header>
+<div id="app"></div>
+
+<div class="modal" id="formModal"><div class="modalbox">
+  <div class="modalhead"><div><div class="eyebrow" id="formEyebrow">CREATE PROFILE</div><h2 id="formTitle">Build your ClassSpace profile</h2></div><button class="close" aria-label="Close" onclick="closeForm()">×</button></div>
+  <div class="modalbody">
+    <div id="formMessage"></div>
+    <form id="profileForm" onsubmit="saveProfile(event)">
+      <div class="formsection"><div class="formsectiontitle"><span class="sectionnum">1</span>Your basics</div><div class="grid">
+        <div class="field"><label>First name</label><input id="first_name" maxlength="40" required autocomplete="given-name"></div>
+        <div class="field"><label>Last initial</label><input id="last_initial" maxlength="1" required></div>
+        <div class="field"><label>Career / dream job</label><input id="career_goal" placeholder="Teacher, designer, entrepreneur…"></div>
+        <div class="field"><label>Something I’m good at</label><input id="skill" placeholder="Drawing, gaming, presenting…"></div>
+      </div></div>
+      <div class="formsection"><div class="formsectiontitle"><span class="sectionnum">2</span>Your favorites</div><div class="grid">
+        <div class="field full"><label>Favorite music</label><input id="favorite_music" placeholder="Artist, genre, song…"></div>
+        <div class="field full"><label>Favorite entertainment</label><input id="favorite_entertainment" placeholder="Movie, show, game, anime, YouTube…"></div>
+        <div class="field"><label>Favorite food</label><input id="favorite_food"></div>
+        <div class="field"><label>Talk to me about…</label><input id="talk_to_me_about" placeholder="Something you can talk about all day"></div>
+      </div></div>
+      <div class="formsection"><div class="formsectiontitle"><span class="sectionnum">3</span>Your personality</div><div class="grid">
+        <div class="field full"><label>Interests</label><input id="interests" placeholder="Basketball, fashion, gaming"><span class="hint">Separate interests with commas.</span></div>
+        <div class="field full"><label>Random fact</label><input id="random_fact" placeholder="Something classmates probably wouldn’t guess"></div>
+        <div class="field full"><label>This year I want to…</label><textarea id="year_goal" placeholder="One goal for the year"></textarea></div>
+      </div></div>
+      <div class="formsection"><div class="formsectiontitle"><span class="sectionnum">4</span>Protect your edits</div><div class="grid">
+        <div class="field full"><label>Choose a 4-digit edit PIN</label><input id="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"><span class="hint">Remember this. You’ll need it anytime you edit your profile.</span></div>
+      </div></div>
+      <div class="actions"><button type="button" class="btn ghost" onclick="closeForm()">Cancel</button><button type="submit" class="btn primary" id="saveBtn">Publish profile</button></div>
+    </form>
+  </div>
+</div></div>
+
+<div class="modal" id="viewModal"><div class="modalbox">
+  <div class="profilehero"><button class="close" aria-label="Close" onclick="closeView()">×</button><div class="profiletop"><div class="avatar" id="viewAvatar"></div><div><h2 id="viewName"></h2><div class="careerwhite" id="viewCareer"></div><div class="tags" id="viewTags"></div></div></div></div>
+  <div class="modalbody"><div class="profilefacts" id="viewFacts"></div><div class="pinbox"><button class="btn ghost" onclick="startEdit()">Edit my profile</button></div></div>
+</div></div>
+
+<script src="app.js"></script>
+</body></html>
