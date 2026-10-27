@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
+import CombatPrototype from './combat/CombatPrototype';
 
 type RoleId = 'marketing' | 'tech' | 'sports' | 'entrepreneur' | 'fashion' | 'operations';
-type Screen = 'title' | 'create' | 'a202' | 'briefing' | 'decision' | 'runner' | 'hub' | 'results';
+type Screen = 'title' | 'create' | 'a202' | 'briefing' | 'decision' | 'runner' | 'hub' | 'results' | 'combat';
 
 type Role = {
   id: RoleId;
@@ -67,6 +68,8 @@ function App() {
     setPanic((value) => Math.min(100, value + 2));
   }
 
+  if (screen === 'combat') return <CombatPrototype name={displayName} avatar={avatar} role={roleId} onExit={() => setScreen('create')} />;
+
   return (
     <main className="outbreak-shell">
       <header className="game-hud">
@@ -104,6 +107,7 @@ function App() {
           ))}</div>
           <div className="role-details"><strong>{role.name}: {role.ability}</strong><span>{role.workplace}</span><span>{role.action}</span></div>
           <button className="primary" onClick={() => setScreen('a202')}>ENTER A202</button>
+          <button onClick={() => setScreen('combat')}>TEST CORPOCALYPSE 2.0 COMBAT</button>
         </section>
       )}
 
