@@ -1,158 +1,983 @@
-import { useEffect, useRef, useState } from 'react';
-import { activateAbility, createCombat, FLOORS, nearbyStation, restoreRelay, respawn, ROLES, startBoss, STATIONS, stepCombat, WORLD, type CombatState, type RoleId, type StationId } from './engine';
-import './combat.css';
-
+import { useEffect, useRef, useState } from "react";
+import {
+  activateAbility,
+  chooseUpgrade,
+  createCombat,
+  distance,
+  nearbyStation,
+  objective,
+  restoreRelay,
+  respawn,
+  ROLES,
+  startBoss,
+  STATIONS,
+  stepCombat,
+  walkable,
+  type Point,
+  type RoleId,
+  type StationId,
+} from "./engine";
+import { draw, screenPoint } from "./render";
+import "./combat.css";
 type Props = { name: string; avatar: string; role: RoleId; onExit: () => void };
-type Question = { prompt: string; options: string[]; correct: number; explanation: string };
-const QUESTIONS: Record<'marketing' | 'tech' | 'service', Question[]> = {
+type Question = {
+  prompt: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+};
+const QUESTIONS: Record<"marketing" | "tech" | "service", Question[]> = {
   marketing: [
-    { prompt: 'The relay must warn students without spreading an unverified rumor. Which message should you broadcast?', options: ['Repeat every group-chat warning.', 'Share the confirmed route, the official source, and the next action.', 'Post a dramatic headline to get attention.'], correct: 1, explanation: 'Clear communication gives the audience verified information and a useful next step.' },
-    { prompt: 'Two teams need the same supplies. What supports a workable solution?', options: ['Listen to both needs and agree on priorities.', 'Give everything to the loudest team.', 'Avoid the conversation.'], correct: 0, explanation: 'Listening and agreeing on priorities supports teamwork and conflict resolution.' },
+    {
+      prompt:
+        "The east exit is blocked, but a verified west route is open. Students, staff and families are receiving different messages. Your relay has room for one alert. What do you send?",
+      options: [
+        "Lead with the verified west route, identify who should use it, and name the official update channel.",
+        "Publish the complete incident timeline first so everyone understands how the situation developed.",
+        "Send “Avoid the east exit” immediately, then wait for every detail before suggesting a route.",
+      ],
+      correct: 0,
+      explanation:
+        "The audience needs an action it can take now, backed by a verified source. A useful alert names the safe route and a next step.",
+    },
   ],
   tech: [
-    { prompt: 'An unknown message asks for the school network password to restore the relay. What should you do?', options: ['Reply with the password.', 'Ask the group chat to vote.', 'Verify the request through an approved channel and protect the password.'], correct: 2, explanation: 'Verification and credential protection help keep systems secure.' },
+    {
+      prompt:
+        "A relay repair request arrives from an unfamiliar account. It asks for administrator access, while students are waiting for the network. Which response best balances speed and security?",
+      options: [
+        "Grant temporary administrator access, then investigate after the route is restored.",
+        "Verify the requester through the approved channel and use the authorized recovery procedure.",
+        "Forward the request to every staff member and wait for someone to recognize the account.",
+      ],
+      correct: 1,
+      explanation:
+        "Verify identity and follow the recovery process. Urgency does not establish authorization. An unfamiliar account must be verified before access is granted.",
+    },
   ],
   service: [
-    { prompt: 'A frightened survivor says their supply request was ignored. Your best first response?', options: ['Listen, acknowledge the concern, and clarify what they need.', 'Promise everything before checking stock.', 'Tell them to calm down and wait.'], correct: 0, explanation: 'Acknowledging the concern and identifying the need is the first step toward a useful resolution.' },
-    { prompt: 'The supply desk cannot provide the requested item. What comes next?', options: ['End the conversation.', 'Explain the limit and offer a practical alternative.', 'Blame the previous shift.'], correct: 1, explanation: 'Honest information and a practical alternative help maintain trust.' },
+    {
+      prompt:
+        "Two survivors need your last portable charger: one is contacting emergency support, the other is updating friends. Both arrived together. How do you handle it?",
+      options: [
+        "Divide charging time equally without asking how much power either device needs.",
+        "Give it to whoever asks most urgently to avoid delaying the line.",
+        "Clarify each need, prioritize the emergency call, and give the other survivor a realistic alternative.",
+      ],
+      correct: 2,
+      explanation:
+        "Clarifying needs makes a fair, practical solution possible. The desk shares a charged power pack.",
+    },
+    {
+      prompt:
+        "A survivor says your promised supply pack was never delivered. Your stock log is incomplete. What should you do first?",
+      options: [
+        "Acknowledge the missed delivery, verify the order, and agree on a realistic next step.",
+        "Promise an immediate replacement before checking remaining stock.",
+        "Explain that another shift handled the order and direct them to that team.",
+      ],
+      correct: 0,
+      explanation:
+        "Take ownership of the next step, verify the facts, and set an achievable expectation.",
+    },
   ],
 };
-
-function draw(canvas: HTMLCanvasElement, s: CombatState, avatar: string) {
-  const width = canvas.clientWidth, height = canvas.clientHeight;
-  const dpr = window.devicePixelRatio || 1;
-  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) { canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); }
-  const c = canvas.getContext('2d'); if (!c) return;
-  c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#0a151b'; c.fillRect(0, 0, width, height);
-  const scale = Math.min(width / 850, height / 570);
-  const cameraX = Math.max(0, Math.min(WORLD.w - width / scale, s.player.x - width / scale / 2));
-  const cameraY = Math.max(0, Math.min(WORLD.h - height / scale, s.player.y - height / scale / 2));
-  c.save(); c.scale(scale, scale); c.translate(-cameraX, -cameraY);
-  for (const r of FLOORS) {
-    c.fillStyle = '#213a40'; c.fillRect(r.x, r.y, r.w, r.h); c.strokeStyle = '#628179'; c.lineWidth = 4; c.strokeRect(r.x, r.y, r.w, r.h);
-    c.strokeStyle = '#2d494d'; c.lineWidth = 1;
-    for (let x = r.x + 40; x < r.x + r.w; x += 40) { c.beginPath(); c.moveTo(x, r.y); c.lineTo(x, r.y + r.h); c.stroke(); }
-  }
-  c.font = 'bold 15px system-ui'; c.fillStyle = '#6e9891'; c.fillText('A HOUSE  /  FIRST RESPONSE', 170, 570); c.fillText('B HOUSE →', 1440, 570);
-  for (const station of STATIONS) {
-    const done = s.relays.includes(station.id) || (station.id === 'staff' && s.rescued);
-    c.fillStyle = done ? '#a8d479' : station.id === 'boss' ? '#bd765e' : '#417d83';
-    c.fillRect(station.x - 26, station.y - 25, 52, 50); c.strokeStyle = '#b9dbb5'; c.strokeRect(station.x - 26, station.y - 25, 52, 50);
-    c.font = 'bold 11px system-ui'; c.textAlign = 'center'; c.fillStyle = '#e3ecda'; c.fillText(station.label, station.x, station.y - 40);
-    c.fillText(done ? '✓' : station.id === 'boss' ? '!' : 'E', station.x, station.y + 5);
-  }
-  for (const e of s.enemies) {
-    if (e.windup > 0) { c.beginPath(); c.arc(e.x, e.y, 115, 0, Math.PI * 2); c.fillStyle = '#f3664838'; c.fill(); c.strokeStyle = '#ff8064'; c.stroke(); }
-    c.beginPath(); c.arc(e.x, e.y, e.boss ? 27 : 17, 0, Math.PI * 2); c.fillStyle = e.stunned ? '#7dcbd6' : e.boss ? '#cb8269' : '#87aa69'; c.fill();
-    c.fillStyle = '#20342a'; c.fillRect(e.x - 8, e.y - 5, 5, 5); c.fillRect(e.x + 4, e.y - 5, 5, 5);
-    c.fillStyle = '#13221a'; c.fillRect(e.x - 22, e.y - 38, 44, 4); c.fillStyle = '#e7ac7b'; c.fillRect(e.x - 22, e.y - 38, 44 * e.hp / e.maxHp, 4);
-  }
-  for (const shot of s.projectiles) { c.fillStyle = '#f0e5a0'; c.beginPath(); c.arc(shot.x, shot.y, 4, 0, Math.PI * 2); c.fill(); }
-  const p = s.player;
-  c.beginPath(); c.arc(p.x, p.y, 23, 0, Math.PI * 2); c.fillStyle = p.invulnerable > 0 ? '#a2dfde' : '#d5eb92'; c.fill();
-  c.textAlign = 'center'; c.font = '29px system-ui'; c.fillText(avatar, p.x, p.y + 10);
-  if (s.pulse > 0) { c.beginPath(); c.arc(p.x, p.y, 240 * (1 - s.pulse / .5), 0, Math.PI * 2); c.strokeStyle = '#d2ef96'; c.lineWidth = 4; c.stroke(); }
-  c.restore();
-  // Whole-campus overview remains visible while the main camera follows the player.
-  const mx = width - 172, my = 18, factor = .085;
-  c.fillStyle = '#071216e8'; c.fillRect(mx - 8, my - 8, 166, 105);
-  c.fillStyle = '#4b6b65'; for (const r of FLOORS) c.fillRect(mx + r.x * factor, my + r.y * factor, r.w * factor, r.h * factor);
-  c.fillStyle = '#e0f6a3'; c.beginPath(); c.arc(mx + p.x * factor, my + p.y * factor, 3, 0, Math.PI * 2); c.fill();
-}
-
+const UPGRADES = [
+  {
+    id: "damage",
+    icon: "↗",
+    name: "Heavy textbooks",
+    detail: "+8 damage per hit. Clear tougher enemies faster.",
+  },
+  {
+    id: "rapid",
+    icon: "»",
+    name: "Quick release",
+    detail: "Fire 0.08 seconds faster. Keep the crowd back.",
+  },
+  {
+    id: "speed",
+    icon: "⌁",
+    name: "Travel light",
+    detail: "+20 movement speed. Escape the closing crowd.",
+  },
+  {
+    id: "magnet",
+    icon: "✦",
+    name: "Supply magnet",
+    detail: "+80 pickup range and recover 25 health.",
+  },
+] as const;
+type Modal = "briefing" | "pause" | "station" | "upgrade" | null;
 export default function CombatPrototype({ name, avatar, role, onExit }: Props) {
-  const state = useRef(createCombat(role));
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const keys = useRef(new Set<string>());
-  const paused = useRef(false);
-  const [view, setView] = useState(() => ({ ...state.current, player: { ...state.current.player } }));
-  const [isPaused, setPaused] = useState(false);
-  const [station, setStation] = useState<StationId | null>(null);
-  const [feedback, setFeedback] = useState('');
-  const [upgrade, setUpgrade] = useState(false);
-  const stationRef = useRef<StationId | null>(null);
-  const sync = () => setView({ ...state.current, player: { ...state.current.player } });
-  const pause = (value: boolean) => { paused.current = value; setPaused(value); keys.current.clear(); };
+  const state = useRef(createCombat(role)),
+    canvas = useRef<HTMLCanvasElement>(null),
+    keys = useRef(new Set<string>());
+  const modalRef = useRef<Modal>("briefing"),
+    stationRef = useRef<StationId | null>(null),
+    destination = useRef<Point | null>(null);
+  const [view, setView] = useState(() => ({
+    ...state.current,
+    player: { ...state.current.player },
+  }));
+  const [modal, setModal] = useState<Modal>("briefing"),
+    [station, setStation] = useState<StationId | null>(null),
+    [question, setQuestion] = useState<Question | null>(null),
+    [feedback, setFeedback] = useState(""),
+    [wrong, setWrong] = useState(false);
+  const qa =
+      import.meta.env.DEV && new URLSearchParams(location.search).has("qa"),
+    qaSpeed = useRef(1);
+  const [sound, setSound] = useState(false),
+    audio = useRef<AudioContext | null>(null),
+    soundRef = useRef(false),
+    dialog = useRef<HTMLDivElement>(null);
+  useEffect(
+    () => () => {
+      void audio.current?.close();
+    },
+    [],
+  );
+  const sync = () =>
+    setView({
+      ...state.current,
+      player: { ...state.current.player },
+      relays: [...state.current.relays],
+    });
+  const open = (next: Modal) => {
+    modalRef.current = next;
+    setModal(next);
+    keys.current.clear();
+    destination.current = null;
+  };
+  const resume = () => {
+    stationRef.current = null;
+    setStation(null);
+    setFeedback("");
+    open(null);
+    sync();
+  };
   const interact = () => {
     const s = state.current;
-    if (paused.current || s.status !== 'playing') return;
-    const near = nearbyStation(s); if (!near) return;
-    if (near.id === 'hq') { s.player.hp = 100; s.checkpoint = { x: 150, y: 500 }; s.message = 'Safe room: health restored and checkpoint set.'; sync(); return; }
-    if (near.id === 'boss') { if (!startBoss(s)) s.message = s.bossStarted ? 'The Hall Monitor is already in the hall.' : 'Restore both classroom relays before opening the gym gate.'; sync(); return; }
-    if (s.relays.includes(near.id) || (near.id === 'staff' && s.rescued)) { s.message = 'This classroom objective is complete.'; sync(); return; }
-    if (near.id === 'service' && s.serviceUses >= 2) { s.message = 'Supply desk energy reserves exhausted for this mission.'; sync(); return; }
-    stationRef.current = near.id; setStation(near.id); setFeedback(''); pause(true);
+    if (modalRef.current || s.status !== "playing") return;
+    const near = nearbyStation(s);
+    if (!near) {
+      s.message = "Move closer to a marked classroom door to interact.";
+      sync();
+      return;
+    }
+    if (near.id === "hq") {
+      s.player.hp = 100;
+      s.checkpoint = { x: 150, y: 500 };
+      s.message = "Safe room: health restored. Checkpoint saved.";
+      sync();
+      return;
+    }
+    if (near.id === "boss") {
+      if (!startBoss(s))
+        s.message = s.bossStarted
+          ? "The Hall Monitor is already hunting you."
+          : !s.surgeDone && s.relays.length === 2
+            ? "Survive the hall-change surge before opening the gate."
+            : "Restore both classroom relays first.";
+      sync();
+      return;
+    }
+    if (s.relays.includes(near.id) || (near.id === "staff" && s.rescued)) {
+      s.message =
+        "Objective complete. Follow the gold arrow to your next destination.";
+      sync();
+      return;
+    }
+    if (near.id === "service" && s.serviceUses >= 2) {
+      s.message = "Both reserve power packs have been used.";
+      sync();
+      return;
+    }
+    stationRef.current = near.id;
+    setStation(near.id);
+    setFeedback("");
+    setWrong(false);
+    setQuestion(
+      near.id === "staff"
+        ? null
+        : QUESTIONS[near.id][near.id === "service" ? s.serviceUses : 0],
+    );
+    open("station");
   };
-  const actions = useRef({ interact, pause, sync }); actions.current = { interact, pause, sync };
+  const actions = useRef({ interact, open, sync });
+  actions.current = { interact, open, sync };
   useEffect(() => {
-    let frame = 0, previous = 0, accumulator = 0, hudTime = 0;
+    soundRef.current = sound;
+  }, [sound]);
+  useEffect(() => {
+    if (!modal && view.status === "playing") return;
+    dialog.current?.focus({ preventScroll: true });
+  }, [modal, view.status, feedback]);
+  useEffect(() => {
+    let frame = 0,
+      previous = 0,
+      accumulator = 0,
+      hudTime = 0,
+      lastCue = 0,
+      lastKills = 0;
+    const beep = (frequency: number) => {
+      if (!soundRef.current || !audio.current) return;
+      const ac = audio.current,
+        osc = ac.createOscillator(),
+        gain = ac.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(frequency, ac.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(
+        frequency / 2,
+        ac.currentTime + 0.07,
+      );
+      gain.gain.setValueAtTime(0.04, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start();
+      osc.stop(ac.currentTime + 0.1);
+    };
     const tick = (time: number) => {
-      const delta = previous ? Math.min((time - previous) / 1000, .1) : 0; previous = time;
-      if (!paused.current && state.current.status === 'playing') {
+      const delta = previous
+        ? Math.min((time - previous) / 1000, 0.25) * qaSpeed.current
+        : 0;
+      previous = time;
+      const s = state.current;
+      if (!modalRef.current && s.status === "playing") {
         accumulator += delta;
         while (accumulator >= 1 / 60) {
           const k = keys.current;
-          stepCombat(state.current, { x: Number(k.has('d') || k.has('arrowright')) - Number(k.has('a') || k.has('arrowleft')), y: Number(k.has('s') || k.has('arrowdown')) - Number(k.has('w') || k.has('arrowup')) }, 1 / 60);
+          let input = {
+            x:
+              Number(k.has("d") || k.has("arrowright")) -
+              Number(k.has("a") || k.has("arrowleft")),
+            y:
+              Number(k.has("s") || k.has("arrowdown")) -
+              Number(k.has("w") || k.has("arrowup")),
+          };
+          if (input.x || input.y) destination.current = null;
+          if (destination.current) {
+            const goal = destination.current,
+              p = s.player;
+            let point = goal;
+            const pc = Math.abs(p.x - 620) < Math.abs(p.x - 1270) ? 620 : 1270,
+              gc =
+                Math.abs(goal.x - 620) < Math.abs(goal.x - 1270) ? 620 : 1270;
+            if (
+              Math.abs(p.y - 500) > 12 &&
+              (pc !== gc || Math.abs(goal.y - 500) < 70)
+            )
+              point = { x: pc, y: 500 };
+            else if (Math.abs(p.x - gc) > 12 && Math.abs(goal.y - 500) >= 70)
+              point = { x: gc, y: 500 };
+            const d = distance(p, point);
+            input =
+              d < 4
+                ? { x: 0, y: 0 }
+                : { x: (point.x - p.x) / d, y: (point.y - p.y) / d };
+            if (distance(p, goal) < 6) destination.current = null;
+          }
+          stepCombat(s, input, 1 / 60);
           accumulator -= 1 / 60;
+          if (s.status !== "playing") break;
+          if (s.xp >= s.upgradeAt) {
+            actions.current.open("upgrade");
+            accumulator = 0;
+            break;
+          }
         }
-        if (state.current.xp >= state.current.upgradeAt && state.current.status === 'playing') { actions.current.pause(true); setUpgrade(true); }
+        if (s.xp >= s.upgradeAt && s.status === "playing")
+          actions.current.open("upgrade");
       } else accumulator = 0;
-      if (canvas.current) draw(canvas.current, state.current, avatar);
-      hudTime += delta; if (hudTime > .1) { actions.current.sync(); hudTime = 0; }
+      if (s.soundCue !== lastCue) {
+        beep(440);
+        lastCue = s.soundCue;
+      }
+      if (s.kills !== lastKills) {
+        beep(160);
+        lastKills = s.kills;
+      }
+      if (canvas.current) draw(canvas.current, s, avatar, destination.current);
+      hudTime += delta;
+      if (hudTime > 0.1) {
+        actions.current.sync();
+        hudTime = 0;
+      }
       frame = requestAnimationFrame(tick);
     };
     const down = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (!['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' ','e','p','escape'].includes(key)) return;
-      if ((event.target as HTMLElement).closest('input,select,textarea') || ((event.target as HTMLElement).closest('button') && key === ' ')) return;
+      if (
+        ![
+          "w",
+          "a",
+          "s",
+          "d",
+          "arrowup",
+          "arrowdown",
+          "arrowleft",
+          "arrowright",
+          " ",
+          "e",
+          "p",
+          "escape",
+        ].includes(key)
+      )
+        return;
+      if ((event.target as HTMLElement).closest("input,select,textarea"))
+        return;
+      if (modalRef.current) {
+        if ((key === "escape" || key === "p") && modalRef.current === "pause")
+          actions.current.open(null);
+        return;
+      }
+      if ((event.target as HTMLElement).closest("button") && key === " ")
+        return;
       event.preventDefault();
       keys.current.add(key);
       if (event.repeat) return;
-      if (key === 'e') actions.current.interact();
-      if (key === ' ' && !paused.current) { activateAbility(state.current); actions.current.sync(); }
-      if ((key === 'p' || key === 'escape') && !stationRef.current) { if (!paused.current) actions.current.pause(true); }
+      if (key === "e") actions.current.interact();
+      if (key === " ") {
+        activateAbility(state.current);
+        actions.current.sync();
+      }
+      if (key === "p" || key === "escape") actions.current.open("pause");
     };
-    const up = (event: KeyboardEvent) => keys.current.delete(event.key.toLowerCase());
-    const blur = () => { keys.current.clear(); if (!paused.current) actions.current.pause(true); };
-    const visibility = () => { if (document.hidden) blur(); };
-    window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', blur); document.addEventListener('visibilitychange', visibility);
+    const up = (event: KeyboardEvent) =>
+      keys.current.delete(event.key.toLowerCase());
+    const blur = () => {
+      keys.current.clear();
+      destination.current = null;
+      if (!modalRef.current && state.current.status === "playing")
+        actions.current.open("pause");
+    };
+    const visibility = () => {
+      if (document.hidden) blur();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    document.addEventListener("visibilitychange", visibility);
     frame = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); document.removeEventListener('visibilitychange', visibility); keys.current.clear(); };
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+      document.removeEventListener("visibilitychange", visibility);
+      keys.current.clear();
+    };
   }, [avatar]);
   function answer(index: number) {
-    if (feedback || !station || station === 'hq' || station === 'boss') return;
     const s = state.current;
-    if (station === 'staff') {
+    if (feedback || !station) return;
+    if (station === "staff") {
       s.rescued = true;
-      if (index === 0) { s.honor += 15; s.xp += 15; s.player.energy = Math.min(100, s.player.energy + 10); setFeedback('You organize a safe escort. +15 honor, +15 XP, +10 energy.'); }
-      else { s.honor += 5; s.xp += 5; setFeedback('You report the location so help can follow. +5 honor, +5 XP.'); }
-    } else {
-      const q = QUESTIONS[station][station === 'service' ? s.serviceUses : 0];
-      if (index !== q.correct) { setFeedback(`Relay still offline. ${q.explanation} Review the choices and retry; there is no energy penalty.`); sync(); return; }
-      if (station === 'service') { s.serviceUses++; s.player.energy = Math.min(100, s.player.energy + 30); s.xp += 10; }
-      else restoreRelay(s, station);
-      setFeedback(`${q.explanation} ${station === 'service' ? '+30 energy, +10 XP.' : '+25 energy, +20 XP. Checkpoint saved.'}`);
+      if (index === 0) {
+        s.honor += 15;
+        s.xp += 15;
+        s.player.energy = Math.min(100, s.player.energy + 10);
+        s.player.hp = Math.min(100, s.player.hp + 20);
+        setFeedback(
+          "You organize a safe escort. +15 honor, +15 XP, +10 energy, +20 health. A rescued survivor shares first-aid supplies.",
+        );
+      } else {
+        s.honor += 5;
+        s.xp += 5;
+        setFeedback(
+          "You report the location and continue the relay work. +5 honor, +5 XP.",
+        );
+      }
+    } else if (question) {
+      if (index !== question.correct) {
+        setWrong(true);
+        setFeedback(
+          question.explanation +
+            " Reconsider the decision and retry. No energy is lost.",
+        );
+        sync();
+        return;
+      }
+      if (station === "service") {
+        s.serviceUses++;
+        s.player.energy = Math.min(100, s.player.energy + 30);
+        s.player.hp = Math.min(100, s.player.hp + 20);
+        s.xp += 10;
+        s.message = "Power pack acquired. +30 energy, +20 health.";
+      } else if (station === "marketing" || station === "tech")
+        restoreRelay(s, station);
+      setFeedback(
+        question.explanation +
+          (station === "service"
+            ? " +30 energy, +20 health, +10 XP."
+            : " +25 energy, +15 health, +20 XP. Checkpoint saved."),
+      );
     }
     sync();
   }
-  function closeStation() { stationRef.current = null; setStation(null); setFeedback(''); pause(false); sync(); }
-  const q = station && ['marketing', 'tech', 'service'].includes(station) ? QUESTIONS[station as 'marketing' | 'tech' | 'service'][station === 'service' ? Math.min(view.serviceUses, 1) : 0] : null;
-  const near = nearbyStation(view);
-  return <section className="combat-prototype" aria-label="Corpocalypse 2.0 combat prototype">
-    <header className="combat-top"><div><span>DEVELOPMENT PROTOTYPE · CHAPTER 01</span><h2>THE FIRST BELL</h2></div><button onClick={() => pause(true)}>Pause</button><button onClick={onExit}>Leave prototype</button></header>
-    <div className="combat-layout"><div className="combat-stage"><canvas ref={canvas} aria-label="Top-down school halls. Move with WASD or arrow keys, E to enter classrooms, Space for class ability." />
-      <div className="combat-location">A HOUSE / CONNECTED HALLS</div><div className="combat-hint">{near ? `E · ${near.label}` : Math.floor(view.elapsed / 35) % 2 ? 'HALL-CHANGE SURGE · Keep moving' : 'Explore classrooms · Basic attacks fire automatically'}</div>
-      {(isPaused || view.status !== 'playing') && <div className="combat-overlay"><div className="combat-dialog" role="dialog" aria-modal="true" aria-label={station ? 'Classroom encounter' : 'Mission status'}>
-        {view.status === 'dead' ? <><h2>Overwhelmed</h2><p>Return to your last classroom checkpoint. Keep XP, honor and relay progress; temporary damage and speed upgrades are lost.</p><button onClick={() => { respawn(state.current); pause(false); sync(); }}>Return to checkpoint</button></> : view.status === 'won' ? <><h2>Signal restored</h2><p>A House has a safe route. {view.kills} zombies cleared · {view.xp} XP · {view.honor} honor.</p><p>First combat slice complete. More school missions are still in development.</p><button onClick={onExit}>Return to campaign</button></> : station ? <>
-          <span>CLASSROOM SAFE INTERACTION · HALLWAY TIME PAUSED</span><h2>{STATIONS.find(s => s.id === station)?.label}</h2>
-          <p>{station === 'staff' ? 'A staff member has found a stranded survivor. How will you help?' : q?.prompt}</p>
-          {!feedback && <div className="combat-choices">{(station === 'staff' ? ['Organize a safe escort before moving on.', 'Report the location and continue restoring the relay.'] : q?.options || []).map((option, i) => <button key={option} onClick={() => answer(i)}>{option}</button>)}</div>}
-          {feedback && <p className="combat-feedback" role="status">{feedback}</p>}
-          {feedback.includes('Relay still offline') && <button onClick={() => setFeedback('')}>Try again</button>}
-          <button onClick={closeStation}>Return to hallway</button>
-        </> : upgrade ? <><h2>Field upgrade earned</h2><p>Choose a temporary upgrade. It lasts until you are overwhelmed.</p><div className="combat-choices">{['Stronger textbook toss · +8 damage', 'Lighter backpack · +20 movement speed'].map((label, i) => <button key={label} onClick={() => { if (i === 0) state.current.damageBoost += 8; else state.current.speedBoost += 20; state.current.upgradeAt += 40; setUpgrade(false); pause(false); sync(); }}>{label}</button>)}</div></> : <><h2>Mission paused</h2><p>Move with WASD or arrows. E enters classrooms. Space uses your class ability. Restore both relays, then open the gym gate. The safe room restores health.</p><button onClick={() => pause(false)}>Resume mission</button></>}
-      </div></div>}
-    </div><aside className="combat-sidebar"><span>SURVIVOR SIGNAL</span><h2>{avatar} {name || 'Rookie'}</h2><p>{ROLES[role].name}</p><label>HEALTH {Math.ceil(view.player.hp)}/100<progress max={100} value={view.player.hp} /></label><label>ENERGY {view.player.energy}/100<progress max={100} value={view.player.energy} /></label><div className="combat-stats"><b>{view.xp}<small>XP</small></b><b>{view.honor}<small>HONOR</small></b><b>{view.kills}<small>CLEARED</small></b></div><article><span>RESTORE THE SIGNAL</span><p>{view.relays.includes('marketing') ? '✓' : '○'} Marketing relay</p><p>{view.relays.includes('tech') ? '✓' : '○'} Technology relay</p><p>{view.status === 'won' ? '✓' : '○'} Hall Monitor boss</p></article><p className="combat-log" aria-live="polite">{view.message}</p><button disabled={isPaused || view.status !== 'playing' || view.player.energy < 25 || view.player.abilityIn > 0} onClick={() => { activateAbility(state.current); sync(); }}>{ROLES[role].ability} {view.player.abilityIn > 0 ? `· ${Math.ceil(view.player.abilityIn)}s` : '· 25 energy'}</button><p className="combat-help">{ROLES[role].description}</p><p className="combat-help">WASD / arrows · Move<br />E · Interact<br />Space · Class ability<br />P / Escape · Pause<br />Temporary upgrades: +{view.damageBoost} damage, +{view.speedBoost} speed</p></aside></div>
-    <nav className="combat-touch" aria-label="Touch controls">{[['↑','arrowup'],['←','arrowleft'],['↓','arrowdown'],['→','arrowright']].map(([label, key]) => <button key={key} aria-label={`Move ${key.replace('arrow','')}`} onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); keys.current.add(key); }} onPointerUp={() => keys.current.delete(key)} onPointerCancel={() => keys.current.delete(key)} onLostPointerCapture={() => keys.current.delete(key)}>{label}</button>)}<button onClick={interact}>Interact · E</button></nav>
-  </section>;
+  const near = nearbyStation(view),
+    goal = objective(view),
+    boss = view.enemies.find((e) => e.boss),
+    abilityReady =
+      !modal &&
+      view.status === "playing" &&
+      view.player.energy >= 25 &&
+      view.player.abilityIn <= 0;
+  const toggleSound = () => {
+    if (!sound) {
+      try {
+        audio.current ??= new AudioContext();
+        void audio.current.resume();
+      } catch {
+        return;
+      }
+    }
+    setSound(!sound);
+  };
+  const trap = (event: React.KeyboardEvent) => {
+    if (event.key !== "Tab") return;
+    const buttons = dialog.current?.querySelectorAll<HTMLElement>(
+      "button:not(:disabled),a[href]",
+    );
+    if (!buttons?.length) return;
+    const first = buttons[0],
+      last = buttons[buttons.length - 1];
+    if (
+      event.shiftKey &&
+      (document.activeElement === first ||
+        document.activeElement === dialog.current)
+    ) {
+      event.preventDefault();
+      last.focus();
+    } else if (
+      !event.shiftKey &&
+      (document.activeElement === last ||
+        document.activeElement === dialog.current)
+    ) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  return (
+    <section className="combat-prototype" aria-label="Corpocalypse Mission 1">
+      <header className="combat-top">
+        <a
+          className="mission-brand"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            if (!modalRef.current && state.current.status === "playing")
+              open("pause");
+          }}
+        >
+          <b>W</b>
+          <div>
+            <span>CORPOCALYPSE / WOODSIDE</span>
+            <h1>
+              THE FIRST BELL<span>MISSION 01</span>
+            </h1>
+          </div>
+        </a>
+        <div className="top-actions">
+          {qa && (
+            <>
+              <label>
+                QA speed{" "}
+                <select
+                  aria-label="QA simulation speed"
+                  onChange={(e) => (qaSpeed.current = Number(e.target.value))}
+                >
+                  <option value="1">1×</option>
+                  <option value="8">8×</option>
+                  <option value="32">32×</option>
+                </select>
+              </label>
+              <span data-testid="qa-position">
+                {Math.round(view.player.x)},{Math.round(view.player.y)}
+              </span>
+            </>
+          )}
+          <span className="mission-clock">
+            {String(Math.floor(view.elapsed / 60)).padStart(2, "0")}:
+            {String(Math.floor(view.elapsed % 60)).padStart(2, "0")}
+          </span>
+          <button onClick={toggleSound} aria-pressed={sound}>
+            Sound {sound ? "on" : "off"}
+          </button>
+          <button
+            onClick={() => open("pause")}
+            disabled={!!modal || view.status !== "playing"}
+          >
+            Ⅱ Pause
+          </button>
+        </div>
+      </header>
+      <div className="mission-objective">
+        <span className="objective-number">
+          {view.relays.length < 2 ? `0${view.relays.length + 1}` : "03"}
+        </span>
+        <div>
+          <small>CURRENT OBJECTIVE</small>
+          <strong>{goal.title}</strong>
+          <span>{goal.detail}</span>
+        </div>
+        <div className="relay-count">
+          <b>{view.relays.length}/2</b>
+          <small>RELAYS ONLINE</small>
+        </div>
+      </div>
+      <div
+        className="mobile-resource-strip"
+        aria-label="Live survivor resources"
+      >
+        <span>
+          HEALTH <b>{Math.ceil(view.player.hp)}/100</b>
+        </span>
+        <span>
+          ENERGY <b>{view.player.energy}/100</b>
+        </span>
+        <span>
+          LV <b>{view.level}</b>
+        </span>
+      </div>
+      <div className="combat-layout">
+        <div className="combat-stage">
+          <canvas
+            ref={canvas}
+            tabIndex={0}
+            aria-label="School hallway. Move with WASD or arrows, or click a floor tile to walk. E to interact. Space for ability."
+            onPointerDown={(e) => {
+              if (
+                modalRef.current ||
+                state.current.status !== "playing" ||
+                !canvas.current
+              )
+                return;
+              const point = screenPoint(
+                canvas.current,
+                state.current,
+                e.clientX,
+                e.clientY,
+              );
+              if (walkable(point)) {
+                destination.current = point;
+                canvas.current.focus();
+              }
+            }}
+          />
+          <div className="combat-location">
+            <i /> A HOUSE <span>CONNECTED HALLS</span>
+          </div>
+          {boss && (
+            <div className="boss-health">
+              <span>
+                THE HALL MONITOR{" "}
+                <b>
+                  {Math.ceil(boss.hp)}/{boss.maxHp}
+                </b>
+              </span>
+              <progress max={boss.maxHp} value={boss.hp} />
+            </div>
+          )}
+          {view.surgeLeft > 0 && (
+            <div className="surge-banner">
+              HALL-CHANGE SURGE <b>{Math.ceil(view.surgeLeft)}s</b>
+            </div>
+          )}
+          <div className="combat-hint">
+            {near ? (
+              <>
+                <kbd>E</kbd> {near.label} <span>{near.detail}</span>
+              </>
+            ) : (
+              <>
+                <span className="auto-dot" /> AUTO-ATTACK ACTIVE{" "}
+                <span>Keep moving · Collect glowing XP</span>
+              </>
+            )}
+          </div>
+          {(modal || view.status !== "playing") && (
+            <div className="combat-overlay">
+              <div
+                className="combat-dialog"
+                ref={dialog}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="dialog-title"
+                tabIndex={-1}
+                onKeyDown={trap}
+              >
+                {view.status === "dead" ? (
+                  <>
+                    <span>CHECKPOINT RECOVERY</span>
+                    <h2 id="dialog-title">The bell isn't over.</h2>
+                    <p>
+                      Your relay progress, XP and honor are safe. Temporary
+                      upgrades are lost. Recover at your last classroom
+                      checkpoint with full health.
+                    </p>
+                    <button
+                      className="gold-button"
+                      onClick={() => {
+                        respawn(state.current);
+                        resume();
+                      }}
+                    >
+                      Return to checkpoint →
+                    </button>
+                    <button onClick={onExit}>Mission menu</button>
+                  </>
+                ) : view.status === "won" ? (
+                  <>
+                    <span>MISSION 01 / COMPLETE</span>
+                    <h2 id="dialog-title">A HOUSE. STILL STANDING.</h2>
+                    <p>
+                      The relays are online. The Hall Monitor is down. The
+                      evacuation route is open.
+                    </p>
+                    <div className="result-grid">
+                      <b>
+                        {view.kills}
+                        <small>ZOMBIES CLEARED</small>
+                      </b>
+                      <b>
+                        {view.xp}
+                        <small>XP EARNED</small>
+                      </b>
+                      <b>
+                        {view.honor}
+                        <small>HONOR</small>
+                      </b>
+                      <b>
+                        {view.recoveries}
+                        <small>RECOVERIES</small>
+                      </b>
+                    </div>
+                    <p>
+                      {view.rescued
+                        ? "You also made time to help a stranded survivor."
+                        : "A staff-room survivor was left for a later rescue team."}
+                    </p>
+                    <button
+                      className="gold-button"
+                      onClick={() => {
+                        state.current = createCombat(role);
+                        open("briefing");
+                        sync();
+                      }}
+                    >
+                      Play another run →
+                    </button>
+                    <button onClick={onExit}>Change survivor</button>
+                  </>
+                ) : modal === "briefing" ? (
+                  <>
+                    <span>7:10 AM / A HOUSE / FONTAINE ON THE RADIO</span>
+                    <h2 id="dialog-title">
+                      First period.
+                      <br />
+                      Last normal day.
+                    </h2>
+                    <p>
+                      Something is wrong in the halls. The evacuation signal is
+                      down, and the gym gate is locked. Restore two classroom
+                      relays. Survive the bell. Clear the route.
+                    </p>
+                    <div className="briefing-steps">
+                      <div>
+                        <b>01</b>
+                        <span>
+                          MARKETING LAB<small>Restore the broadcast</small>
+                        </span>
+                      </div>
+                      <div>
+                        <b>02</b>
+                        <span>
+                          TECHNOLOGY LAB<small>Bring the network online</small>
+                        </span>
+                      </div>
+                      <div>
+                        <b>03</b>
+                        <span>
+                          GYM GATE<small>Face the Hall Monitor</small>
+                        </span>
+                      </div>
+                    </div>
+                    <p className="control-summary">
+                      <kbd>WASD</kbd> / arrows to move · click the floor to walk
+                      <br />
+                      <kbd>E</kbd> interact · <kbd>Space</kbd>{" "}
+                      {ROLES[role].ability}
+                      <br />
+                      Attacks fire automatically. Collect green XP. Classroom
+                      time is paused.
+                    </p>
+                    <button className="gold-button" onClick={resume}>
+                      Head into the halls →
+                    </button>
+                  </>
+                ) : modal === "station" ? (
+                  <>
+                    <span>CLASSROOM ENCOUNTER / HALLWAY TIME PAUSED</span>
+                    <h2 id="dialog-title">
+                      {STATIONS.find((s) => s.id === station)?.label}
+                    </h2>
+                    <p>
+                      {station === "staff"
+                        ? "A staff member has found a stranded survivor. An escort will slow your relay work, but the survivor has first-aid supplies. What is your move?"
+                        : question?.prompt}
+                    </p>
+                    {!feedback && (
+                      <div className="combat-choices">
+                        {(station === "staff"
+                          ? [
+                              "Organize a safe escort, then resume the relay mission.",
+                              "Report the location and prioritize the relays.",
+                            ]
+                          : question?.options || []
+                        ).map((option, i) => (
+                          <button key={option} onClick={() => answer(i)}>
+                            <b>{String.fromCharCode(65 + i)}</b>
+                            <span>{option}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {feedback && (
+                      <p
+                        className={
+                          wrong ? "combat-feedback wrong" : "combat-feedback"
+                        }
+                        role="status"
+                      >
+                        {feedback}
+                      </p>
+                    )}
+                    {wrong && (
+                      <button
+                        className="gold-button"
+                        onClick={() => {
+                          setFeedback("");
+                          setWrong(false);
+                        }}
+                      >
+                        Review choices
+                      </button>
+                    )}
+                    <button
+                      className={feedback && !wrong ? "gold-button" : ""}
+                      onClick={resume}
+                    >
+                      {feedback && !wrong
+                        ? "Back to the halls →"
+                        : "Leave classroom"}
+                    </button>
+                  </>
+                ) : modal === "upgrade" ? (
+                  <>
+                    <span>LEVEL {view.level + 1} / FIELD UPGRADE</span>
+                    <h2 id="dialog-title">Make your next move.</h2>
+                    <p>
+                      Pick one upgrade for this run. Classroom progress survives
+                      a checkpoint recovery; these upgrades don't.
+                    </p>
+                    <div className="upgrade-grid">
+                      {UPGRADES.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            chooseUpgrade(state.current, item.id);
+                            resume();
+                          }}
+                        >
+                          <b>{item.icon}</b>
+                          <strong>{item.name}</strong>
+                          <span>{item.detail}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span>TAKE A BREATHER</span>
+                    <h2 id="dialog-title">Mission paused.</h2>
+                    <p>
+                      Follow the gold arrow and minimap to your objective.
+                      Attacks fire automatically. Green pickups give XP and a
+                      little energy. Supply desk visits restore energy and
+                      health.
+                    </p>
+                    <p>
+                      <kbd>WASD</kbd> move · <kbd>E</kbd> interact ·{" "}
+                      <kbd>Space</kbd> ability
+                    </p>
+                    <button className="gold-button" onClick={resume}>
+                      Resume mission →
+                    </button>
+                    <button onClick={onExit}>Mission menu</button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        <aside className="combat-sidebar" aria-label="Survivor status">
+          <div className="survivor-card">
+            <span className="survivor-avatar">{avatar}</span>
+            <div>
+              <small>YOUR SURVIVOR</small>
+              <h2>{name || "Rookie"}</h2>
+              <p>{ROLES[role].name}</p>
+            </div>
+            <b>LV {view.level}</b>
+          </div>
+          <div className="resource-bars">
+            <label>
+              HEALTH{" "}
+              <b>
+                {Math.ceil(view.player.hp)}
+                <span>/100</span>
+              </b>
+              <progress max={100} value={view.player.hp} />
+            </label>
+            <label className="energy-bar">
+              ENERGY{" "}
+              <b>
+                {view.player.energy}
+                <span>/100</span>
+              </b>
+              <progress max={100} value={view.player.energy} />
+            </label>
+            <label className="xp-bar">
+              NEXT UPGRADE{" "}
+              <b>
+                {Math.min(view.xp, view.upgradeAt)}
+                <span>/{view.upgradeAt} XP</span>
+              </b>
+              <progress
+                max={35}
+                value={Math.max(0, view.xp - (view.upgradeAt - 35))}
+              />
+            </label>
+          </div>
+          <div className="combat-stats">
+            <b>
+              {view.kills}
+              <small>CLEARED</small>
+            </b>
+            <b>
+              {view.honor}
+              <small>HONOR</small>
+            </b>
+            <b>
+              {view.xp}
+              <small>TOTAL XP</small>
+            </b>
+          </div>
+          <article className="mission-checklist">
+            <span>THE EVACUATION PLAN</span>
+            <p className={view.relays.includes("marketing") ? "done" : ""}>
+              <b>{view.relays.includes("marketing") ? "✓" : "01"}</b>Broadcast
+              relay
+            </p>
+            <p className={view.relays.includes("tech") ? "done" : ""}>
+              <b>{view.relays.includes("tech") ? "✓" : "02"}</b>Network relay
+            </p>
+            <p className={view.surgeDone ? "done" : ""}>
+              <b>{view.surgeDone ? "✓" : "03"}</b>Survive hall change
+            </p>
+            <p className={view.status === "won" ? "done" : ""}>
+              <b>{view.status === "won" ? "✓" : "04"}</b>Hall Monitor
+            </p>
+          </article>
+          <div className="radio-message">
+            <span>▥ FONTAINE / RADIO</span>
+            <p aria-live="polite">{view.message}</p>
+          </div>
+          <button
+            className="ability-button"
+            disabled={!abilityReady}
+            onClick={() => {
+              activateAbility(state.current);
+              sync();
+            }}
+          >
+            <small>SPACE / CLASS ABILITY</small>
+            <b>{ROLES[role].ability}</b>
+            <span>
+              {view.player.abilityIn > 0
+                ? `${Math.ceil(view.player.abilityIn)}s cooldown`
+                : view.player.energy < 25
+                  ? "Need 25 energy"
+                  : "25 energy · Ready"}
+            </span>
+          </button>
+          <p className="combat-help">{ROLES[role].description}</p>
+          <div className="field-kit">
+            <span>FIELD KIT</span>
+            <p>
+              +{view.damageBoost} damage · +{view.speedBoost} speed
+            </p>
+            <p>
+              {view.fireBoost > 0
+                ? `${Math.round(view.fireBoost * 1000)}ms faster fire`
+                : "Standard textbook toss"}{" "}
+              · {115 + view.magnetBoost} pickup range
+            </p>
+          </div>
+        </aside>
+      </div>
+      <nav className="combat-touch" aria-label="Touch controls">
+        <div className="direction-pad">
+          {[
+            ["↑", "arrowup"],
+            ["←", "arrowleft"],
+            ["↓", "arrowdown"],
+            ["→", "arrowright"],
+          ].map(([label, key]) => (
+            <button
+              key={key}
+              disabled={!!modal || view.status !== "playing"}
+              aria-label={`Move ${key.replace("arrow", "")}`}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.currentTarget.setPointerCapture(e.pointerId);
+                keys.current.add(key);
+                destination.current = null;
+              }}
+              onPointerUp={() => keys.current.delete(key)}
+              onPointerCancel={() => keys.current.delete(key)}
+              onLostPointerCapture={() => keys.current.delete(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          disabled={!!modal || view.status !== "playing"}
+          onClick={interact}
+        >
+          Interact <kbd>E</kbd>
+        </button>
+        <button
+          className="touch-ability"
+          disabled={!abilityReady}
+          onClick={() => {
+            activateAbility(state.current);
+            sync();
+          }}
+        >
+          {ROLES[role].ability}
+          <small>
+            {view.player.abilityIn > 0
+              ? `${Math.ceil(view.player.abilityIn)}s`
+              : "25 energy"}
+          </small>
+        </button>
+        <span>MOVE · EXPLORE · SURVIVE</span>
+      </nav>
+    </section>
+  );
 }

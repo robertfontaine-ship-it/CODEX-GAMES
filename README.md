@@ -1,3 +1,13 @@
+# Corpocalypse 2.0 — The Day Woodside Fell
+
+Mission 1, **The First Bell**, is the current school survival playtest. Choose a survivor, restore two classroom relays, survive the hall-change surge, and defeat the Hall Monitor.
+
+Run `npm install`, `npm test`, `npm run build`, then `npm run dev`. The default screen launches the new mission. See [Mission 1 notes](docs/MISSION_1_PLAYTEST.md) for controls, verification, preservation, and known limits. The earlier Woodside story remains accessible from the menu.
+
+The original corporate campaign and its pinned browser preview remain preserved below.
+
+---
+
 # WRS Quest
 
 **Flagship campaign:** **Corpocalypse: Climb the Corporate Ladder**
@@ -58,3 +68,4 @@ npm run dev
 ```bash
 npm run build
 ```
+

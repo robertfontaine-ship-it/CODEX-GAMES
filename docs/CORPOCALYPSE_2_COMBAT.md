@@ -1,3 +1,5 @@
+> Superseded by the Mission 1 playtest increment on November 1, 2026. The user authorized browser verification, combat refinement, and a playable test link. See MISSION_1_PLAYTEST.md for current controls and verification. The original prototype branch remains preserved.
+
 # Corpocalypse 2.0 — combat development slice
 
 Branch: `feature/corpocalypse-2-combat`, based on `bd3143ba1362483f06fb70774b94d71e7aad9edc`.
@@ -45,3 +47,4 @@ Before expanding the map, playtest attack feel, keyboard/touch navigation, surge
 - Combat increment: all 22 tests passed, including 15 new simulation cases; TypeScript/Vite build passed.
 - Preservation check: no diff from the base commit in `preview/`, original game rules/content, playtest code, main entry point, README or deployment workflows.
 - Browser QA could not run: no installed Chromium executable, and the browser download returned an invalid ZIP (`End of central directory record signature not found`). Keyboard/touch interface and visual layout require browser playtesting before release.
+
